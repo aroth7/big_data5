@@ -287,7 +287,7 @@ def process_data(file_name):
                 
     print('yooo')
     
-    if file_name == 'loans_A_labeled.csv':
+    if file_name == 'loans_A1_labeled.csv':
         data = data.to_dict('records')
         lis = []
         for ele in data:
@@ -313,7 +313,7 @@ all_candidates = ['is_female', 'low_loan_amount', 'fast_repayment', 'slow_repaym
 def main(k, split_candidates):
     predictions = []
     days = []
-    loans = process_data("loans_A_labeled.csv")
+    loans = process_data("loans_A1_labeled.csv")
     tree = build_tree(loans, k, split_candidates)
     print("\n", tree, "\n")
     acc = 0
@@ -323,7 +323,7 @@ def main(k, split_candidates):
         acc += ((predict(tree, loans[i][0]) - loans[i][1])**2)/len(loans)
     acc = np.round(acc, 2)
     
-    loans_unlabeled = process_data("loans_AB_labeled.csv")
+    loans_unlabeled = process_data("loans_A2_labeled.csv")
     predicted = pd.DataFrame(columns=['ID', 'days_until_funded_CC_WG_AR'])
     
     print('boop')
@@ -337,7 +337,7 @@ def main(k, split_candidates):
     
     print('beep')
     
-    predicted.to_csv('loans_AB_predicted_CC_WG_AR.csv', encoding='utf-8', index=False)
+    predicted.to_csv('loans_A2_predicted_CC_WG_AR.csv', encoding='utf-8', index=False)
     
     predictions = np.array(predictions)
     days = np.array(days)
@@ -387,7 +387,7 @@ everything = ['overall_sentiment', 'contains_old', 'contains_improve', 'contains
               'multi_lang']
 
 # gave tree 8 levels bc only have 8 attributes in list
-print(main(8, everything))
+print(main(4, core_candidates))
 # process_data('loans_B_unlabeled.csv')
 
 # acc_list = []

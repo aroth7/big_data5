@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from math import log
 
-file_reader = open("loans_AB_labeled.csv", "rt", encoding="utf8")
+file_reader = open("loans_A2_labeled.csv", "rt", encoding="utf8")
 data_dict  = csv.DictReader(file_reader)
 
 loans_data = []
@@ -14,7 +14,7 @@ for row in data_dict:
     days_until_funded = row.pop("days_until_funded")
     loans_data.append((id_number, float(days_until_funded)))
     
-file_reader_predicted = open("loans_AB_predicted_CC_WG_AR.csv", "rt", encoding="utf8")
+file_reader_predicted = open("loans_A2_predicted_CC_WG_AR.csv", "rt", encoding="utf8")
 data_dict_predicted  = csv.DictReader(file_reader_predicted)
 
 predicted_data = []
@@ -37,3 +37,6 @@ for i in range(len(loans_data)):
 acc = np.round(acc, 2)
 
 print(acc)
+
+# core model MSE = 101.86, training MSE = 62.34
+# core model two-level MSE = 98.74, training MSE = 76.52
