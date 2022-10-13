@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 import seaborn as sns
+import datetime
 
 #avg days funded for sector, repayment_term
 
@@ -23,6 +24,27 @@ def plot_scatter(x_col):
     plt.xticks(rotation = 90)
     plt.title("days_until_funded vs " + x_col)
 
+# data['posted_date'] = pd.to_datetime(data['posted_date'], format='%Y-%m-%d')
+# data['month_day'] = data['posted_date'].dt.strftime('%m-%d')
+data['month'] = pd.DatetimeIndex(data['posted_date']).month
+# sns.scatterplot(data=data, x="month", y="days_until_funded")
+# plt.title("days_until_funded vs month of posted_date")
+# plt.ylabel("days until funded")
+# plt.xlabel('posted year')
+
+months = data['month'].unique()
+avg_days_per_month = {}
+
+for month in months:
+    avg_days_per_month[month] = data[data["month"] == month]["days_until_funded"].mean()
+
+ticks = [x for x in range(1, 12)]
+
+plt.bar(x=avg_days_per_month.keys(), height=avg_days_per_month.values())
+plt.xticks(ticks= ticks, rotation = 90) 
+plt.title("Average days until funded by month of posted_date")
+plt.ylabel("days until funded")
+
 # %%
 # bar for gender
 sns.countplot(data=data, x="days_until_funded", hue="gender")
@@ -31,7 +53,7 @@ plt.title("count of days funded by gender")
 # %%
 
 sns.scatterplot(data=data, x="loan_amount", y="days_until_funded", hue='sector')
-plt.title("days_until_funded vs loan_amount by country")
+plt.title("days_until_funded vs loan_amount by sector")
 plt.ylabel("days until funded")
 plt.xlabel('loan amount')
 

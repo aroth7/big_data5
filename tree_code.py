@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from math import log
 from collections import defaultdict, Counter
 import copy
-
+import pycountry_convert as pc
 
 # from macpath import split
 
@@ -58,7 +58,7 @@ def partition_loss(subsets):
         for x in list_days:
             squared_sum += (x - mean)**2
         
-        h = (length / num_obs) * (squared_sum / length)
+        h = num_obs * squared_sum
         loss += h
             
     return loss
@@ -114,19 +114,20 @@ def partition_loss_by(inputs, attribute):
 *        number of levels based on labeled data "inputs"
 ************************************************************************"""
 def build_tree(inputs, num_levels, candidates):
-    split_candidates = copy.deepcopy(candidates) #make sure you can split on the same attribute in different branches
+    #make sure you can split on the same attribute in different branches
+    split_candidates = copy.deepcopy(candidates)
     # print(len(split_candidates), num_levels)
     days_till_loan_lst = [row[1] for row in inputs]
     days_till_loan = np.array(days_till_loan_lst)
-    avg_days_till_loan = np.mean(days_till_loan)
+    avg_days_till_loan = np.round(np.mean(days_till_loan), 2)
 
     # if every row has the same number of days then stop splitting
     if avg_days_till_loan == days_till_loan_lst[0]:
         return avg_days_till_loan
     # print(split_candidates)
     if num_levels == 0 or len(split_candidates) == 0:
-        
         return avg_days_till_loan
+    
     min_loss = partition_loss_by(inputs, split_candidates[0])
     best_candidate = split_candidates[0]
     for candidate in split_candidates:
@@ -137,10 +138,13 @@ def build_tree(inputs, num_levels, candidates):
     split_candidates.remove(best_candidate)
     partion = partition_by(inputs, best_candidate)
     if len(partion[0]) == 0:
-        return (best_candidate, {1: build_tree(partion[1], num_levels-1, split_candidates)})
+        return (best_candidate, {0: avg_days_till_loan, 
+                                 1: build_tree(partion[1], num_levels-1, split_candidates)})
     if len(partion[1]) == 0:
-        return (best_candidate, {0: build_tree(partion[0], num_levels-1, split_candidates)})
-    return (best_candidate, {0: build_tree(partion[0],num_levels-1,split_candidates), 1: build_tree(partion[1],num_levels-1,split_candidates)})
+        return (best_candidate, {0: build_tree(partion[0], num_levels-1, split_candidates),
+                                 1: avg_days_till_loan})
+    return (best_candidate, {0: build_tree(partion[0],num_levels-1,split_candidates), 
+                             1: build_tree(partion[1],num_levels-1,split_candidates)})
 
 
 """************************************************************************
@@ -164,7 +168,6 @@ def predict(tree, to_predict):
     attribute = tree[0]
     sub_tree = tree[1]
     
-    """TODO: change for non-binary"""
     if to_predict[ attribute ] == 0:
         return predict(sub_tree[0], to_predict)
     else:
@@ -181,7 +184,7 @@ def predict(tree, to_predict):
 *		 of features and 'b' is the value of the days_until_funded variable
 ************************************************************************"""
 def load_data():
-    file_reader = open("loans_A_labeled.csv", "rt", encoding="utf8")
+    file_reader = open("loans_B_unlabeled.csv", "rt", encoding="utf8")
     data_dict  = csv.DictReader(file_reader)
     
     loans_data = []
@@ -192,114 +195,228 @@ def load_data():
     
     return loans_data
 
-def process_data():
+def country_to_continent(country_name):
+    country_alpha2 = pc.country_name_to_country_alpha2(country_name)
+    country_continent_code = pc.country_alpha2_to_continent_code(country_alpha2)
+    country_continent_name = pc.convert_continent_code_to_continent_name(country_continent_code)
+    return country_continent_name
+
+def process_data(file_name):
+    print(file_name)
     # f = open("loans_B_unlabeled.csv", "rt", encoding="utf8")
-    f = open("loans_A_labeled.csv", "rt", encoding="utf8")
-    positive_words = ['children' , 'community' , 'repayment' , 'food', 'pass', 'home' ,
-    'fruit' , 'married' , 'morning' , 'born' ]
-    negative_words = ['school', 'old' , 'business' , 'village' , 
-    'years', 'loan', 'additional', 'costly' , 'invest', 'expand']
+    f = open(file_name, "rt", encoding="utf8")
+    # positive_words = ['children' , 'community' , 'repayment' , 'food', 'pass', 'home' ,
+    # 'fruit' , 'married' , 'morning' , 'born' ]
+    # negative_words = ['school', 'old' , 'business' , 'village' , 
+    # 'years', 'loan', 'additional', 'costly' , 'invest', 'expand']
+    positive_words = ['years', 'children', 'married', 'help', 'lives', 'income', 'old', 'husband', 'living', 'selling', 'kiva']
+    negative_words = ['loan', 'business', 'buy', 'family', 'work', 'house', 'store', 'improve']
+    
     data = pd.read_csv(f)
     data['is_female'] = data['gender'].apply(lambda x: 1 if x == 'F' else 0)
     data['low_loan_amount'] = data['loan_amount'].apply(lambda x: 1 if x <= 375.0 else 0)
     data['fast_repayment'] = data['repayment_term'].apply(lambda x: 1 if x <= 8 else 0)
     data['slow_repayment'] = data['repayment_term'].apply(lambda x: 1 if x >= 13 else 0)
+    data['multi_lang'] = data['languages'].apply(lambda x: 1 if len(x.split('|')) > 2 else 0) 
     data['is_peru'] = data['country'].apply(lambda x: 1 if x == 'Peru' else 0)
     data['housing_sector'] = data['sector'].apply(lambda x: 1 if x == 'Housing' else 0)
-    data['is_philippines'] = data['country'].apply(lambda x: 1 if x == 'Philippines' else 0)
+    # data['is_philippines'] = data['country'].apply(lambda x: 1 if x == 'Philippines' else 0)
     data['is_kenya'] = data['country'].apply(lambda x: 1 if x == 'Kenya' else 0)
-    data['is_nicaragua'] = data['country'].apply(lambda x: 1 if x == 'Nicaragua' else 0)
+    # data['is_nicaragua'] = data['country'].apply(lambda x: 1 if x == 'Nicaragua' else 0)
+    # data['asian'] = data['country'].apply(lambda x: 1 if country_to_continent(x) == 'Asia' else 0)
+    # data['north_american'] = data['country'].apply(lambda x: 1 if country_to_continent(x) == 'North America' else 0)
     data['contains_old'] = data['description'].apply(lambda x: 1 if  'old' in x.lower() else 0)
     data['contains_improve'] = data['description'].apply(lambda x: 1 if  'improve' in x.lower() else 0)
     data['contains_help'] = data['description'].apply(lambda x: 1 if  'help' in x.lower() else 0)
-    data['contains_family'] = data['description'].apply(lambda x: 1 if  'family' in x.lower() else 0)
-    data['contains_business'] = data['description'].apply(lambda x: 1 if  'business' in x.lower() else 0)
+    data['contains_buy'] = data['description'].apply(lambda x: 1 if  'buy' in x.lower() else 0)
+    data['contains_loan'] = data['description'].apply(lambda x: 1 if  'loan' in x.lower() else 0)
+    data['asian'] = pd.NaT
+    data['north_american'] = pd.NaT
+                
+    print('nyoom')
+        
+    data['month'] = pd.DatetimeIndex(data['posted_date']).month
+    data['is_mar_dec'] = data['month'].apply(lambda x: 1 if x == 3 or 12 else 0)
+    data['is_jun_sep'] = data['month'].apply(lambda x: 1 if x == 6 or 9 else 0)
 
     #non-binary don't use
-    data['words'] = data['description'].apply(lambda x: x.lower().split())
-    data['negative_sentiment'] = pd.DataFrame(data['words'].tolist(),index=data.index).isin(negative_words).sum(1) 
-    data['positive_sentiment'] = pd.DataFrame(data['words'].tolist(),index=data.index).isin(positive_words).sum(1)
+    # data['words'] = data['description'].apply(lambda x: x.lower().split())
+    # data['negative_sentiment_other'] = pd.DataFrame(data['words'].tolist(),index=data.index).isin(negative_words).sum(1) 
+    # data['positive_sentiment_other'] = pd.DataFrame(data['words'].tolist(),index=data.index).isin(positive_words).sum(1)
     #non-binary don't use
+    
+    print('parsing')
+    
+    for n in negative_words:
+        data[n] = data['description'].str.contains(n, case=False).astype(int)
+    data['negative_sentiment'] = data[negative_words].sum(axis=1)
+
+    for p in positive_words:
+        data[p] = data['description'].str.contains(p, case=False).astype(int) 
+    data['positive_sentiment'] = data[positive_words].sum(axis=1)
 
     data['overall_sentiment'] = (data['positive_sentiment'] > data['negative_sentiment']) * 1 # cast to int
-    data['high_negative_sentiment'] = data['negative_sentiment'].apply(lambda x : 1 if x > 3 else 0)
-    data['high_positive_sentiment'] = data['positive_sentiment'].apply(lambda x : 1 if x > 3 else 0)
+    data['high_negative_sentiment'] = data['negative_sentiment'].apply(lambda x : 1 if x > 4 else 0)
+    data['high_positive_sentiment'] = data['positive_sentiment'].apply(lambda x : 1 if x > 4  else 0)
     # data = data.drop('days_until_funded', axis=1)
     # data = data.drop('words', axis=1)
-    data = data.to_dict('records')
-    lis = []
-    for ele in data:
-        temp = ele['days_until_funded']
-        del ele['days_until_funded']
-        lis.append((ele,temp))
-    return lis
+    
+    print('meh')
+    
+    for index, row in data.iterrows():
+        country = row['country']
+        country_others = ['congo', 'cote']
+        country_asia = ['timor', 'myanmar', 'lao']
+        if any(substring in country.lower() for substring in country_others):
+            data.at[index, 'asian'] = 0
+            data.at[index, 'north_american'] = 0
+        elif any(substring in country.lower() for substring in country_asia):
+            data.at[index, 'asian'] = 1
+            data.at[index, 'north_american'] = 0
+        else: 
+            continent = country_to_continent(country)
+            if continent == 'Asia':
+                data.at[index, 'asian'] = 1
+                data.at[index, 'north_american'] = 0
+            elif continent == 'North America':
+                data.at[index, 'asian'] = 0
+                data.at[index, 'north_american'] = 1
+            else: 
+                data.at[index, 'asian'] = 0
+                data.at[index, 'north_american'] = 0
+                
+    print('yooo')
+    
+    if file_name == 'loans_A_labeled.csv':
+        data = data.to_dict('records')
+        lis = []
+        for ele in data:
+            temp = ele['days_until_funded']
+            del ele['days_until_funded']
+            lis.append((ele,temp))
+        return lis
+    else:
+        data = data.to_dict('records')
+        print('dict')
+        return data
+        
     # return data.to_csv("loans_B_unlabed_plus.csv")
 
 # %%
-all_candidates = ['overall_sentiment', 'is_female', 'low_loan_amount', 'fast_repayment', 'slow_repayment', 'is_peru'
-    ,'housing_sector', 'is_philippines', 'is_kenya', 'is_nicaragua', 'contains_old', 'contains_improve', 'contains_help',
-    'contains_family', 'contains_business', 'high_negative_sentiment', 'high_positive_sentiment']
+all_candidates = ['is_female', 'low_loan_amount', 'fast_repayment', 'slow_repayment',
+                  'housing_sector', 'is_kenya', 'asian', 'north_american', 'is_mar_dec', 'is_jun_sep', 
+                  'multi_lang']
+# all_candidates = ['overall_sentiment', 'is_female', 'low_loan_amount', 'fast_repayment', 'slow_repayment', 'is_peru'
+#     ,'housing_sector', 'is_philippines', 'is_kenya', 'is_nicaragua', 'contains_old', 'contains_improve', 'contains_help',
+#     'contains_buy', 'contains_loan', 'high_negative_sentiment', 'high_positive_sentiment']
 
 def main(k, split_candidates):
-    loans = process_data()
+    predictions = []
+    days = []
+    loans = process_data("loans_A_labeled.csv")
     tree = build_tree(loans, k, split_candidates)
-    # print(tree)
+    print("\n", tree, "\n")
     acc = 0
     for i in range(len(loans)):
+        days.append(loans[i][1])
+        predictions.append(predict(tree, loans[i][0]))
         acc += ((predict(tree, loans[i][0]) - loans[i][1])**2)/len(loans)
-    return ("MSE is: " + str(acc))
+    acc = np.round(acc, 2)
+    
+    loans_unlabeled = process_data("loans_AB_labeled.csv")
+    predicted = pd.DataFrame(columns=['ID', 'days_until_funded_CC_WG_AR'])
+    
+    print('boop')
+    
+    for i in range(len(loans_unlabeled)):
+        if (i % 1000) == 0:
+            print(i)
+        predicted.at[i, 'ID'] = loans_unlabeled[i]['id']
+        prediction = predict(tree, loans_unlabeled[i])
+        predicted.at[i, 'days_until_funded_CC_WG_AR'] = prediction
+    
+    print('beep')
+    
+    predicted.to_csv('loans_AB_predicted_CC_WG_AR.csv', encoding='utf-8', index=False)
+    
+    predictions = np.array(predictions)
+    days = np.array(days)
+    print(np.unique(predictions))
+    print(len(np.unique(predictions)))
+    print(np.unique(days))
+    print(len(np.unique(days)))
+    return (acc)
 
-    # use below return statement when graphing
-    # return acc 
+    # return process_data()
+    # loans = load_data()
+    # return loans
+    # tree = build_tree(loans, 1)
+    
+    # correct_predictions = 0
+    # for i in range(len(mushrooms)):
+    #     if classify(tree, mushrooms[i][0]) == mushrooms[i][1]:
+    #         correct_predictions += 1
+            
+    # return ((correct_predictions / float(len(mushrooms))) * 100)
+    # change this to MSE -- sum across (actual - pred)**2 / numObs
 
+# for i in range(1,10):
+#     print(main(i, all_candidates))
 # %%
 # TREE 1: tree with 1 level
-main(1, all_candidates)
+# print(main(1, all_candidates))
 
 # %%
 # TREE 2: tree with 3 levels
-main(3, all_candidates)
+# main(3, all_candidates)
 
-# %%
-# TREE 2: tree with modified split_candidates list  
+# # %%
+# # TREE 2: tree with modified split_candidates list  
 core_candidates = ['is_female', 'low_loan_amount', 'fast_repayment', 'slow_repayment']
 
 # gave tree 4 levels bc only have 4 attributes in list
-main(4, core_candidates)
+# main(4, all_candidates)
 # %%
 descriptions_only = ['overall_sentiment', 'contains_old', 'contains_improve', 'contains_help',
-    'contains_family', 'contains_business', 'high_negative_sentiment', 'high_positive_sentiment']
+    'contains_buy', 'contains_loan', 'high_negative_sentiment', 'high_positive_sentiment']
+
+everything = ['overall_sentiment', 'contains_old', 'contains_improve', 'contains_help',
+              'contains_buy', 'contains_loan', 'high_negative_sentiment', 'high_positive_sentiment',
+              'is_female', 'low_loan_amount', 'fast_repayment', 'slow_repayment',
+              'housing_sector', 'is_kenya', 'asian', 'north_american', 'is_mar_dec', 'is_jun_sep', 
+              'multi_lang']
 
 # gave tree 8 levels bc only have 8 attributes in list
-main(8, descriptions_only)
+print(main(8, everything))
+# process_data('loans_B_unlabeled.csv')
 
-acc_list = []
-for i in range(1,9):
-	acc_list.append(main(i, descriptions_only))
+# acc_list = []
+# for i in range(1,21):
+#  	acc_list.append(main(i, everything))
 
-num_levels = [x for x in range(1, 9)]
+# num_levels = [x for x in range(1, 21)]
 
-plt.plot(num_levels, acc_list)
-plt.xticks(num_levels)
-plt.xlabel('number of levels')
-plt.ylabel('MSE')
-plt.title('MSE of Tree vs Number of Levels')
+# plt.plot(num_levels, acc_list)
+# plt.xticks(num_levels)
+# plt.xlabel('number of levels')
+# plt.ylabel('MSE')
+# plt.title('Accuracy of Tree vs Number of Levels')
+
+# print(acc_list)
+
+# for count, (x,y) in enumerate(zip(num_levels, acc_list), start=1):
+    
+#     label = "{:.2f}".format(y)
+
+#     if x == float(1):
+#         plt.annotate(label, (x,y), textcoords="offset points", 
+#                       xytext=(0,10), ha='center')
+#         next
+        
+#     if count % 2 == 0:
+#         plt.annotate(label, (x,y), textcoords="offset points", 
+#                       xytext=(0,10), ha='center')
 
 
 
-# %%
-# TREE 5: running with 17 levels on all 17 candidates 
-main(17, all_candidates)
-
-acc_list = []
-for i in range(1,18):
-	acc_list.append(main(i, all_candidates))
-
-num_levels = [x for x in range(1, 18)]
-
-plt.plot(num_levels, acc_list)
-plt.xticks(num_levels)
-plt.xlabel('number of levels')
-plt.ylabel('MSE')
-plt.title('MSE of Tree vs Number of Levels')
-# %%
+# # %%
