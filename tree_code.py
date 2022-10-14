@@ -323,6 +323,13 @@ all_candidates = ['is_female', 'low_loan_amount', 'fast_repayment', 'slow_repaym
 #     ,'housing_sector', 'is_philippines', 'is_kenya', 'is_nicaragua', 'contains_old', 'contains_improve', 'contains_help',
 #     'contains_buy', 'contains_loan', 'high_negative_sentiment', 'high_positive_sentiment']
 
+
+'''k is layers
+split_candidates is attributes you can change
+length is the number of samples to choose for the bootstrap
+num_trees is number of trees to make for the random forest
+num_split_candidates is the number of candidates to randomly consider at each level
+'''
 def main(k, split_candidates, length = 10, num_trees = 10, num_split_candidates = 5):
     predictions = []
     days = []
