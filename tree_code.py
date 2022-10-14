@@ -8,6 +8,7 @@ from math import log
 from collections import defaultdict, Counter
 import copy
 import pycountry_convert as pc
+import random
 
 # from macpath import split
 
@@ -194,6 +195,14 @@ def load_data():
         loans_data.append((row, days_until_funded))
     
     return loans_data
+
+def bootstrap_sample(inputs, length):
+    idx_list = []
+    for x in range(length):
+        idx_list.append(random.rand_int(0, len(inputs)-1))
+    sample = [inputs[x] for x in idx_list]
+    return sample
+        
 
 def country_to_continent(country_name):
     country_alpha2 = pc.country_name_to_country_alpha2(country_name)
