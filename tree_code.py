@@ -114,10 +114,14 @@ def partition_loss_by(inputs, attribute):
 * TODO:  Write a recursive function that builds a tree of the specified
 *        number of levels based on labeled data "inputs"
 ************************************************************************"""
-def build_tree(inputs, num_levels, candidates):
+def build_tree(inputs, num_levels, candidates, num_split_candidates):
     #make sure you can split on the same attribute in different branches
     split_candidates = copy.deepcopy(candidates)
-    # print(len(split_candidates), num_levels)
+    sampled_split_candidates = None
+    if len(split_candidates) <= num_split_candidates: 
+        sampled_split_candidates = split_candidates
+    else:
+        sampled_split_candidates = random.sample(split_candidates, num_split_candidates)
     days_till_loan_lst = [row[1] for row in inputs]
     days_till_loan = np.array(days_till_loan_lst)
     avg_days_till_loan = np.round(np.mean(days_till_loan), 2)
@@ -125,13 +129,12 @@ def build_tree(inputs, num_levels, candidates):
     # if every row has the same number of days then stop splitting
     if avg_days_till_loan == days_till_loan_lst[0]:
         return avg_days_till_loan
-    # print(split_candidates)
     if num_levels == 0 or len(split_candidates) == 0:
         return avg_days_till_loan
     
-    min_loss = partition_loss_by(inputs, split_candidates[0])
-    best_candidate = split_candidates[0]
-    for candidate in split_candidates:
+    min_loss = partition_loss_by(inputs, sampled_split_candidates[0])
+    best_candidate = sampled_split_candidates[0]
+    for candidate in sampled_split_candidates:
         curr_loss = partition_loss_by(inputs, candidate)
         if curr_loss < min_loss:
             min_loss = curr_loss
@@ -140,12 +143,12 @@ def build_tree(inputs, num_levels, candidates):
     partion = partition_by(inputs, best_candidate)
     if len(partion[0]) == 0:
         return (best_candidate, {0: avg_days_till_loan, 
-                                 1: build_tree(partion[1], num_levels-1, split_candidates)})
+                                 1: build_tree(partion[1], num_levels-1, split_candidates, num_split_candidates)})
     if len(partion[1]) == 0:
-        return (best_candidate, {0: build_tree(partion[0], num_levels-1, split_candidates),
+        return (best_candidate, {0: build_tree(partion[0], num_levels-1, split_candidates, num_split_candidates),
                                  1: avg_days_till_loan})
-    return (best_candidate, {0: build_tree(partion[0],num_levels-1,split_candidates), 
-                             1: build_tree(partion[1],num_levels-1,split_candidates)})
+    return (best_candidate, {0: build_tree(partion[0],num_levels-1,split_candidates, num_split_candidates), 
+                             1: build_tree(partion[1],num_levels-1,split_candidates, num_split_candidates)})
 
 
 """************************************************************************
@@ -173,6 +176,11 @@ def predict(tree, to_predict):
         return predict(sub_tree[0], to_predict)
     else:
         return predict(sub_tree[1], to_predict)
+def forest_predict(trees, to_predict):
+    ans = 0
+    for tree in trees:
+        ans += predict(tree, to_predict)
+    return ans / len(trees)
 
 
 """************************************************************************
@@ -197,9 +205,11 @@ def load_data():
     return loans_data
 
 def bootstrap_sample(inputs, length):
+    if length >= len(inputs):
+        length = len(inputs)
     idx_list = []
     for x in range(length):
-        idx_list.append(random.rand_int(0, len(inputs)-1))
+        idx_list.append(random.randint(0, len(inputs)-1))
     sample = [inputs[x] for x in idx_list]
     return sample
         
@@ -313,41 +323,39 @@ all_candidates = ['is_female', 'low_loan_amount', 'fast_repayment', 'slow_repaym
 #     ,'housing_sector', 'is_philippines', 'is_kenya', 'is_nicaragua', 'contains_old', 'contains_improve', 'contains_help',
 #     'contains_buy', 'contains_loan', 'high_negative_sentiment', 'high_positive_sentiment']
 
-def main(k, split_candidates):
+def main(k, split_candidates, length = 10, num_trees = 10, num_split_candidates = 5):
     predictions = []
     days = []
     loans = process_data("loans_A1_labeled.csv")
-    tree = build_tree(loans, k, split_candidates)
-    print("\n", tree, "\n")
+    trees = []
+    for i in range(num_trees):
+        trees.append(build_tree(bootstrap_sample(loans, length), k, split_candidates, num_split_candidates))
     acc = 0
     for i in range(len(loans)):
         days.append(loans[i][1])
-        predictions.append(predict(tree, loans[i][0]))
-        acc += ((predict(tree, loans[i][0]) - loans[i][1])**2)/len(loans)
+        predictions.append(forest_predict(trees, loans[i][0]))
+        acc += ((forest_predict(trees, loans[i][0]) - loans[i][1])**2)/len(loans)
     acc = np.round(acc, 2)
     
     loans_unlabeled = process_data("loans_A2_labeled.csv")
     predicted = pd.DataFrame(columns=['ID', 'days_until_funded_CC_WG_AR'])
-    
-    print('boop')
-    
+        
     for i in range(len(loans_unlabeled)):
         if (i % 1000) == 0:
             print(i)
         predicted.at[i, 'ID'] = loans_unlabeled[i]['id']
-        prediction = predict(tree, loans_unlabeled[i])
+        prediction = forest_predict(trees, loans_unlabeled[i])
         predicted.at[i, 'days_until_funded_CC_WG_AR'] = prediction
     
-    print('beep')
     
     predicted.to_csv('loans_A2_predicted_CC_WG_AR.csv', encoding='utf-8', index=False)
     
     predictions = np.array(predictions)
     days = np.array(days)
-    print(np.unique(predictions))
-    print(len(np.unique(predictions)))
-    print(np.unique(days))
-    print(len(np.unique(days)))
+    # print(np.unique(predictions))
+    # print(len(np.unique(predictions)))
+    # print(np.unique(days))
+    # print(len(np.unique(days)))
     return (acc)
 
     # return process_data()
@@ -388,9 +396,9 @@ everything = ['overall_sentiment', 'contains_old', 'contains_improve', 'contains
               'is_female', 'low_loan_amount', 'fast_repayment', 'slow_repayment',
               'housing_sector', 'is_kenya', 'asian', 'north_american', 'is_mar_dec', 'is_jun_sep', 
               'multi_lang']
-
+print(main(5, everything, 100, 100, 10))
 # gave tree 8 levels bc only have 8 attributes in list
-print(main(4, core_candidates))
+# print(main(4, core_candidates))
 # process_data('loans_B_unlabeled.csv')
 
 # acc_list = []
