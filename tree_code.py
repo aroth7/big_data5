@@ -241,8 +241,6 @@ def process_data(file_name):
     data['contains_loan'] = data['description'].apply(lambda x: 1 if  'loan' in x.lower() else 0)
     data['asian'] = pd.NaT
     data['north_american'] = pd.NaT
-                
-    print('nyoom')
         
     data['month'] = pd.DatetimeIndex(data['posted_date']).month
     data['is_mar_dec'] = data['month'].apply(lambda x: 1 if x == 3 or 12 else 0)
@@ -270,8 +268,6 @@ def process_data(file_name):
     # data = data.drop('days_until_funded', axis=1)
     # data = data.drop('words', axis=1)
     
-    print('meh')
-    
     for index, row in data.iterrows():
         country = row['country']
         country_others = ['congo', 'cote']
@@ -293,8 +289,6 @@ def process_data(file_name):
             else: 
                 data.at[index, 'asian'] = 0
                 data.at[index, 'north_american'] = 0
-                
-    print('yooo')
     
     if file_name == 'loans_A1_labeled.csv':
         data = data.to_dict('records')
