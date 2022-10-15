@@ -302,7 +302,7 @@ def process_data(file_name):
                 data.at[index, 'asian'] = 0
                 data.at[index, 'north_american'] = 0
     
-    if file_name == 'loans_A_labeled.csv':
+    if file_name == 'loans_A_labeled.csv' or file_name == 'loans_AB_labeled.csv':
         data = data.to_dict('records')
         lis = []
         for ele in data:
@@ -334,33 +334,31 @@ num_split_candidates is the number of candidates to randomly consider at each le
 '''
 def main(k, split_candidates, length = 10, num_trees = 10, num_split_candidates = 5):
     predictions = []
-    days = []
-    loans = process_data("loans_A_labeled.csv")
+    # days = []
+    loans = process_data("loans_AB_labeled.csv")
     trees = []
     for i in range(num_trees):
-        trees.append(build_tree(bootstrap_sample(loans, length), k, split_candidates, num_split_candidates))
+        new_loan = bootstrap_sample(loans, length)
+        trees.append(build_tree(new_loan, k, split_candidates, num_split_candidates))
     acc = 0
     for i in range(len(loans)):
-        days.append(loans[i][1])
-        predictions.append(forest_predict(trees, loans[i][0]))
-        acc += ((forest_predict(trees, loans[i][0]) - loans[i][1])**2)/len(loans)
+        # days.append(loans[i][1])
+        p = forest_predict(trees, loans[i][0])
+        predictions.append(p)
+        acc += ((p - loans[i][1])**2)/len(loans)
     acc = np.round(acc, 2)
-    
-    loans_unlabeled = process_data("loans_AB_labeled.csv")
+    loans_unlabeled = process_data("loans_B_unlabed_plus.csv")
     predicted = pd.DataFrame(columns=['ID', 'days_until_funded_CC_WG_AR'])
-        
     for i in range(len(loans_unlabeled)):
-        if (i % 1000) == 0:
+        # if (i % 1000) == 0:
             # print(i)
         predicted.at[i, 'ID'] = loans_unlabeled[i]['id']
         prediction = forest_predict(trees, loans_unlabeled[i])
         predicted.at[i, 'days_until_funded_CC_WG_AR'] = prediction
     
-    
     predicted.to_csv('loans_A2_predicted_CC_WG_AR.csv', encoding='utf-8', index=False)
-    
-    predictions = np.array(predictions)
-    days = np.array(days)
+    # predictions = np.array(predictions)
+    # days = np.array(days)
     # print(np.unique(predictions))
     # print(len(np.unique(predictions)))
     # print(np.unique(days))
