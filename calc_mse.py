@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from math import log
 
-file_reader = open("loans_A2_labeled.csv", "rt", encoding="utf8")
+file_reader = open("loans_AB_labeled.csv", "rt", encoding="utf8")
 data_dict  = csv.DictReader(file_reader)
 
 loans_data = []

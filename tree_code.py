@@ -335,7 +335,7 @@ num_split_candidates is the number of candidates to randomly consider at each le
 def main(k, split_candidates, length = 10, num_trees = 10, num_split_candidates = 5):
     predictions = []
     # days = []
-    loans = process_data("loans_AB_labeled.csv")
+    loans = process_data("loans_A_labeled.csv")
     trees = []
     for i in range(num_trees):
         new_loan = bootstrap_sample(loans, length)
@@ -347,13 +347,13 @@ def main(k, split_candidates, length = 10, num_trees = 10, num_split_candidates 
         predictions.append(p)
         acc += ((p - loans[i][1])**2)/len(loans)
     acc = np.round(acc, 2)
-    loans_unlabeled = process_data("loans_B_unlabed_plus.csv")
+    loans_unlabeled = process_data("loans_AB_labeled.csv")
     predicted = pd.DataFrame(columns=['ID', 'days_until_funded_CC_WG_AR'])
     for i in range(len(loans_unlabeled)):
-        # if (i % 1000) == 0:
-            # print(i)
-        predicted.at[i, 'ID'] = loans_unlabeled[i]['id']
-        prediction = forest_predict(trees, loans_unlabeled[i])
+        if (i % 5000) == 0:
+            print(i)
+        predicted.at[i, 'ID'] = loans_unlabeled[i][0]['id']
+        prediction = forest_predict(trees, loans_unlabeled[i][0])
         predicted.at[i, 'days_until_funded_CC_WG_AR'] = prediction
     
     predicted.to_csv('loans_A2_predicted_CC_WG_AR.csv', encoding='utf-8', index=False)
