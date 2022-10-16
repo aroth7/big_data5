@@ -6,7 +6,7 @@ import numpy.linalg
 import pycountry_convert as pc
 from datetime import datetime
 
-fileReader = open("loans_A_labeled.csv", "rt", encoding="utf8")
+fileReader = open("loans_AB_labeled.csv", "rt", encoding="utf8")
 csvReader  = csv.DictReader(fileReader)
 
 afDaysFunded  = list()
@@ -23,11 +23,11 @@ afLowLoan = list()
 
 afSector = list()
 afCountry = list()
-# afCountinent = list()
+afContinent = list()
 
-afKeyword = list()
-afSentiment = list()
-afHighSentiment = list()
+# afKeyword = list()
+# afSentiment = list()
+# afHighSentiment = list()
 
 afMonth = list()
 
@@ -45,121 +45,128 @@ for dcObservation in csvReader:
     numObs += 1
     fDaysFunded = int(dcObservation["days_until_funded"])
     
-    if dcObservation["gender"] == "M":
-        fFemale = 0
-    else:
-        fFemale = 1
+    # if dcObservation["gender"] == "M":
+    #     fFemale = 0
+    # else:
+    #     fFemale = 1
     
-    languages = len(dcObservation["languages"].split("|")) - 1
-    if languages > 1:
-        fLanguages = 1
-    else:
-        fLanguages = 0
+    # languages = len(dcObservation["languages"].split("|")) - 1
+    # if languages > 1:
+    #     fLanguages = 1
+    # else:
+    #     fLanguages = 0
         
-    fRepayment = int(dcObservation["repayment_term"])
-    if fRepayment <= 8:
-        fFastRepay = 1
-    else:
-        fFastRepay = 0
+    # fRepayment = int(dcObservation["repayment_term"])
+    # if fRepayment <= 8:
+    #     fFastRepay = 1
+    # else:
+    #     fFastRepay = 0
         
-    if fRepayment >= 13:
-        fSlowRepay = 1
-    else:
-        fSlowRepay = 0
+    # if fRepayment >= 13:
+    #     fSlowRepay = 1
+    # else:
+    #     fSlowRepay = 0
     
-    fLoanAmount = float(dcObservation["loan_amount"])
-    if fLoanAmount >= 1000.0:
-        fHighLoan = 1
-    else:
-        fHighLoan = 0
+    # fLoanAmount = float(dcObservation["loan_amount"])
+    # if fLoanAmount >= 975.0:
+    #     fHighLoan = 1
+    # else:
+    #     fHighLoan = 0
     
-    if fLoanAmount <= 375.0:
-        fLowLoan = 1
-    else:
-        fLowLoan = 0
+    # if fLoanAmount >= 975.0:
+    #     fLowLoan = 1
+    # else:
+    #     fLowLoan = 0
         
-    sector = dcObservation["sector"]
-    if sector == "Housing":
-        fSector = 1
-    else:
-        fSector = 0
+    # sector = dcObservation["sector"]
+    # if sector == "Housing":
+    #     fSector = 1
+    # else:
+    #     fSector = 0
         
     country = dcObservation["country"]
-    if country == "Cambodia":
-        fCountry = 1
-    else:
-        fCountry = 0
-        
-    continent = country_to_continent(country)
-    if continent == "Asia":
-        print(country)
+    # if country == "Cambodia":
+    #     fCountry = 1
+    # else:
+    #     fCountry = 0
+
+    country_others = ['congo', 'cote']
+    country_asia = ['timor', 'myanmar', 'lao']
+    
+    if any(substring in country.lower() for substring in country_others):
+        fContinent = 0
+    elif any(substring in country.lower() for substring in country_asia):
         fContinent = 1
     else:
-        fContinent = 0
+        continent = country_to_continent(country)
+        if continent == "Asia":
+            fContinent = 1
+        else:
+            fContinent = 0
         
     if 'family' in dcObservation['description'].lower():
         fKeyword = 1
     else:
         fKeyword = 0
         
-    fSentiment = 0
-    negative_words = ['loan', 'business', 'buy', 'family', 'work', 'house', 
-                      'store', 'improve']
-    positive_words = ['years', 'children', 'married', 'help', 'lives', 'income', 
-                      'old', 'husband', 'living', 'selling', 'kiva']
+    # fSentiment = 0
+    # negative_words = ['loan', 'business', 'buy', 'family', 'work', 'house', 
+    #                   'store', 'improve']
+    # positive_words = ['years', 'children', 'married', 'help', 'lives', 'income', 
+    #                   'old', 'husband', 'living', 'selling', 'kiva']
     
-    for word in dcObservation['description'].lower().split():
-        if word in negative_words:
-            fSentiment -= 1
-        # if word in positive_words:
-        #     fSentiment += 1
+    # for word in dcObservation['description'].lower().split():
+    #     if word in negative_words:
+    #         fSentiment -= 1
+    #     # if word in positive_words:
+    #     #     fSentiment += 1
     
-    if fSentiment < -2:
-        fHighSentiment = 1
-    else:
-        fHighSentiment = 0
+    # if fSentiment < -2:
+    #     fHighSentiment = 1
+    # else:
+    #     fHighSentiment = 0
     
     date = datetime.strptime(dcObservation['posted_date'], '%Y-%m-%dT%H:%M:%SZ').date()
     month = date.month
-    if month == 3 or month == 12:
+    if month == 12:
         fMonth = 1
     else:
         fMonth = 0
             
     afDaysFunded.append(fDaysFunded)
-    afFemale.append(fFemale)
-    afLanguages.append(fLanguages)
-    afRepayment.append(fRepayment)
-    afFastRepay.append(fFastRepay)
-    afSlowRepay.append(fSlowRepay)
-    afLoanAmount.append(fLoanAmount)
-    afHighLoan.append(fHighLoan)
-    afLowLoan.append(fLowLoan)
-    afSector.append(fSector)
-    afCountry.append(fCountry)
-    # afContinent.append(fContinent)
-    afKeyword.append(fKeyword)
-    afSentiment.append(fSentiment)
-    afHighSentiment.append(fHighSentiment)
+    # afFemale.append(fFemale)
+    # afLanguages.append(fLanguages)
+    # afRepayment.append(fRepayment)
+    # afFastRepay.append(fFastRepay)
+    # afSlowRepay.append(fSlowRepay)
+    # afLoanAmount.append(fLoanAmount)
+    # afHighLoan.append(fHighLoan)
+    # afLowLoan.append(fLowLoan)
+    # afSector.append(fSector)
+    # afCountry.append(fCountry)
+    afContinent.append(fContinent)
+    # afKeyword.append(fKeyword)
+    # afSentiment.append(fSentiment)
+    # afHighSentiment.append(fHighSentiment)
     afMonth.append(fMonth)
 
 fileReader.close()
 
 afDaysFunded  = np.array( afDaysFunded )
-afFemale  = np.array( afFemale )
-afLanguages = np.array( afLanguages )
-afRepayment = np.array( afRepayment )
-afFastRepay = np.array( afFastRepay )
-afSlowRepay = np.array( afSlowRepay )
-afLoanAmount = np.array( afLoanAmount )
-afHighLoan = np.array( afHighLoan )
-afLowLoan = np.array( afLowLoan )
+# afFemale  = np.array( afFemale )
+# afLanguages = np.array( afLanguages )
+# afRepayment = np.array( afRepayment )
+# afFastRepay = np.array( afFastRepay )
+# afSlowRepay = np.array( afSlowRepay )
+# afLoanAmount = np.array( afLoanAmount )
+# afHighLoan = np.array( afHighLoan )
+# afLowLoan = np.array( afLowLoan )
 afSector = np.array( afSector )
-afCountry = np.array( afCountry )
-# afContinent = np.array( afContinent )
-afKeyword = np.array( afKeyword )
-afSentiment = np.array( afSentiment )
-afHighSentiment = np.array( afHighSentiment )
+# afCountry = np.array( afCountry )
+afContinent = np.array( afContinent )
+# afKeyword = np.array( afKeyword )
+# afSentiment = np.array( afSentiment )
+# afHighSentiment = np.array( afHighSentiment )
 afMonth = np.array( afMonth )
 
 print("Mean(Days_Funded): ", float(totalDaysFunded / numObs))
@@ -219,11 +226,11 @@ print("OLS Regression: ",
 # print("OLS Regression: ", 
 #       np.linalg.lstsq(np.vstack([afCountry, np.ones(len(afCountry))]).T, 
 #                       afDaysFunded, rcond=None), "\n")
-# # print("Correlation between days until funded and Africa: ", 
-# #       sp.stats.pearsonr(afDaysFunded, afContinent))
-# # print("OLS Regression: ", 
-# #       np.linalg.lstsq(np.vstack([afContinent, np.ones(len(afContinent))]).T, 
-# #                       afDaysFunded, rcond=None), "\n")
+print("Correlation between days until funded and Africa: ", 
+      sp.stats.pearsonr(afDaysFunded, afContinent))
+print("OLS Regression: ", 
+      np.linalg.lstsq(np.vstack([afContinent, np.ones(len(afContinent))]).T, 
+                      afDaysFunded, rcond=None), "\n")
 # print("Correlation between days until funded and keyword in the description: ", 
 #       sp.stats.pearsonr(afDaysFunded, afKeyword))
 # print("OLS Regression: ", 
